@@ -1,5 +1,7 @@
 """Binary sensor platform."""
 
+from homeassistant.helpers import entity_registry as er
+
 from .helpers import eid, refresh, setup, station
 
 
@@ -23,7 +25,10 @@ async def test_storm_and_charging(hass, aioclient_mock):
     s["values"].update(storm=True, charging=False)
     entry = await setup(hass, aioclient_mock, [s])
     assert hass.states.get(eid(hass, "binary_sensor", "Lignano", "storm")).state == "on"
-    assert hass.states.get(eid(hass, "binary_sensor", "Lignano", "charging")).state == "off"
+    # diagnostic: registered but disabled by default, so it has no state until enabled
+    charging = eid(hass, "binary_sensor", "Lignano", "charging")
+    assert charging is not None and hass.states.get(charging) is None
+    assert er.async_get(hass).async_get(charging).disabled_by is er.RegistryEntryDisabler.INTEGRATION
     await refresh(hass, aioclient_mock, entry, station(online=False, capabilities=caps))
     assert hass.states.get(eid(hass, "binary_sensor", "Lignano", "storm")).state == "unavailable"
     assert hass.states.get(eid(hass, "binary_sensor", "Lignano", "online")).state == "off"

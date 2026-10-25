@@ -39,6 +39,7 @@ BINARY_SENSORS: tuple[OpoMeteoBinaryDescription, ...] = (
         capability="charging",
         device_class=BinarySensorDeviceClass.BATTERY_CHARGING,
         entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
     ),
 )
 
