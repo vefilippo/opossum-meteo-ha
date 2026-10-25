@@ -1,0 +1,12 @@
+{
+  "domain": "opossum_meteo",
+  "name": "OpoMeteo",
+  "codeowners": ["@vefilippo"],
+  "config_flow": true,
+  "documentation": "https://github.com/vefilippo/opossum-meteo-ha",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/vefilippo/opossum-meteo-ha",
+  "requirements": [],
+  "version": "0.1.0"
+}

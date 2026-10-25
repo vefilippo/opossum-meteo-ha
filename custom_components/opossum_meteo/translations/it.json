@@ -1,0 +1,70 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Collegati a OpoMeteo",
+        "description": "Inserisci l'indirizzo web del tuo server OpoMeteo e una chiave API creata nella sua pagina di amministrazione.",
+        "data": {
+          "url": "URL del server",
+          "api_key": "Chiave API"
+        },
+        "data_description": {
+          "url": "Ad esempio https://meteo.example.com",
+          "api_key": "Inizia con opo_"
+        }
+      },
+      "stations": {
+        "title": "Scegli le stazioni",
+        "description": "Seleziona le stazioni da aggiungere a Home Assistant.",
+        "data": {
+          "stations": "Stazioni"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Riautentica OpoMeteo",
+        "description": "La chiave API per {url} è stata rifiutata. Inserisci una nuova chiave.",
+        "data": {
+          "api_key": "Chiave API"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "La chiave API è stata rifiutata.",
+      "cannot_connect": "Impossibile raggiungere il server."
+    },
+    "abort": {
+      "already_configured": "Questo server è già configurato.",
+      "reauth_successful": "Riautenticazione riuscita."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opzioni OpoMeteo",
+        "data": {
+          "stations": "Stazioni",
+          "auto_add": "Aggiungi automaticamente le nuove stazioni",
+          "units": "Unità",
+          "scan_interval": "Intervallo di aggiornamento (secondi)"
+        },
+        "data_description": {
+          "units": "L'impostazione predefinita di Home Assistant segue le unità del sistema.",
+          "scan_interval": "Minimo 30 secondi."
+        }
+      }
+    },
+    "abort": {
+      "invalid_auth": "La chiave API è stata rifiutata. Riautentica prima l'integrazione.",
+      "cannot_connect": "Impossibile raggiungere il server."
+    }
+  },
+  "selector": {
+    "units": {
+      "options": {
+        "ha": "Predefinito di Home Assistant",
+        "metric": "Metrico",
+        "imperial": "Imperiale"
+      }
+    }
+  }
+}

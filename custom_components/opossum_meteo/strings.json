@@ -1,0 +1,70 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to OpoMeteo",
+        "description": "Enter the web address of your OpoMeteo server and an API key created in its admin page.",
+        "data": {
+          "url": "Server URL",
+          "api_key": "API key"
+        },
+        "data_description": {
+          "url": "For example https://meteo.example.com",
+          "api_key": "Starts with opo_"
+        }
+      },
+      "stations": {
+        "title": "Choose stations",
+        "description": "Select the stations to add to Home Assistant.",
+        "data": {
+          "stations": "Stations"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Re-authenticate OpoMeteo",
+        "description": "The API key for {url} was rejected. Enter a new key.",
+        "data": {
+          "api_key": "API key"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "The API key was rejected.",
+      "cannot_connect": "Could not reach the server."
+    },
+    "abort": {
+      "already_configured": "This server is already configured.",
+      "reauth_successful": "Re-authentication was successful."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "OpoMeteo options",
+        "data": {
+          "stations": "Stations",
+          "auto_add": "Add new stations automatically",
+          "units": "Units",
+          "scan_interval": "Update interval (seconds)"
+        },
+        "data_description": {
+          "units": "Home Assistant default follows your system unit settings.",
+          "scan_interval": "Minimum 30 seconds."
+        }
+      }
+    },
+    "abort": {
+      "invalid_auth": "The API key was rejected. Re-authenticate the integration first.",
+      "cannot_connect": "Could not reach the server."
+    }
+  },
+  "selector": {
+    "units": {
+      "options": {
+        "ha": "Home Assistant default",
+        "metric": "Metric",
+        "imperial": "Imperial"
+      }
+    }
+  }
+}
