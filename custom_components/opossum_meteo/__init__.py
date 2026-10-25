@@ -4,23 +4,18 @@ from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.components.sensor import SensorDeviceClass
-from homeassistant.const import (
-    Platform,
-    UnitOfPrecipitationDepth,
-    UnitOfPressure,
-    UnitOfTemperature,
-    UnitOfVolumetricFlux,
-)
+from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers import issue_registry as ir
+from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .api import OpoMeteoClient
 from .const import (
     CONF_API_KEY,
+    CONF_APPLIED_UNITS,
     CONF_AUTO_ADD,
     CONF_KNOWN_STATIONS,
     CONF_STATIONS,
@@ -32,29 +27,11 @@ from .const import (
     ISSUE_NEW_STATION,
 )
 from .coordinator import OpoMeteoConfigEntry, OpoMeteoCoordinator
+from .entity import device_key
+from .units import UNIT_OVERRIDES as UNIT_CLASSES
+from .units import merged_sensor_options, unit_override
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR]
-
-# sensor device class -> unit per units option ("ha" removes the override)
-UNIT_OVERRIDES: dict[SensorDeviceClass, dict[str, str]] = {
-    SensorDeviceClass.TEMPERATURE: {
-        "metric": UnitOfTemperature.CELSIUS,
-        "imperial": UnitOfTemperature.FAHRENHEIT,
-    },
-    SensorDeviceClass.ATMOSPHERIC_PRESSURE: {
-        "metric": UnitOfPressure.HPA,
-        "imperial": UnitOfPressure.INHG,
-    },
-    SensorDeviceClass.PRECIPITATION: {
-        "metric": UnitOfPrecipitationDepth.MILLIMETERS,
-        "imperial": UnitOfPrecipitationDepth.INCHES,
-    },
-    SensorDeviceClass.PRECIPITATION_INTENSITY: {
-        "metric": UnitOfVolumetricFlux.MILLIMETERS_PER_HOUR,
-        "imperial": UnitOfVolumetricFlux.INCHES_PER_HOUR,
-    },
-}
-
 
 async def async_setup_entry(hass: HomeAssistant, entry: OpoMeteoConfigEntry) -> bool:
     """Set up OpoMeteo from a config entry."""
@@ -77,9 +54,25 @@ async def async_setup_entry(hass: HomeAssistant, entry: OpoMeteoConfigEntry) -> 
     def _on_update() -> None:
         if coordinator.last_update_success:
             _sync_stations(hass, entry, coordinator.data["stations"])
+            _refresh_devices(hass, entry, coordinator.data["stations"])
 
     entry.async_on_unload(coordinator.async_add_listener(_on_update))
     return True
+
+
+async def async_remove_entry(hass: HomeAssistant, entry: OpoMeteoConfigEntry) -> None:
+    """Drop this entry's repair issues."""
+    _delete_issues(hass, entry, keep=set())
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, entry: OpoMeteoConfigEntry, device_entry: DeviceEntry
+) -> bool:
+    """Allow deleting a device whose station is no longer selected or present."""
+    stations = (entry.runtime_data.data or {}).get("stations", {})
+    selected = set(entry.options.get(CONF_STATIONS, []))
+    active = {device_key(entry.entry_id, sid) for sid in selected if sid in stations}
+    return not any(d == DOMAIN and i in active for d, i in device_entry.identifiers)
 
 
 async def _async_options_updated(hass: HomeAssistant, entry: OpoMeteoConfigEntry) -> None:
@@ -123,30 +116,36 @@ def _sync_stations(
             options={**entry.options, CONF_STATIONS: selected},
         )
 
-    wanted = {f"{ISSUE_NEW_STATION}_{sid}" for sid in pending}
+    wanted = {_issue_id(entry, sid) for sid in pending}
     for sid in pending:
         ir.async_create_issue(
             hass,
             DOMAIN,
-            f"{ISSUE_NEW_STATION}_{sid}",
+            _issue_id(entry, sid),
             is_fixable=False,
             severity=ir.IssueSeverity.WARNING,
             translation_key=ISSUE_NEW_STATION,
             translation_placeholders={"name": stations[sid].get("name") or sid},
         )
     # a station that got selected or vanished no longer needs its issue
+    _delete_issues(hass, entry, keep=wanted)
+
+
+def _issue_id(entry: OpoMeteoConfigEntry, station_id: str) -> str:
+    return f"{ISSUE_NEW_STATION}_{entry.entry_id}_{station_id}"
+
+
+def _delete_issues(hass: HomeAssistant, entry: OpoMeteoConfigEntry, keep: set[str]) -> None:
+    """Delete this entry's new-station issues except those in keep."""
+    prefix = f"{ISSUE_NEW_STATION}_{entry.entry_id}_"
     for domain, issue_id in list(ir.async_get(hass).issues):
-        if (
-            domain == DOMAIN
-            and issue_id.startswith(f"{ISSUE_NEW_STATION}_")
-            and issue_id not in wanted
-        ):
+        if domain == DOMAIN and issue_id.startswith(prefix) and issue_id not in keep:
             ir.async_delete_issue(hass, DOMAIN, issue_id)
 
 
 def _remove_deselected(hass: HomeAssistant, entry: OpoMeteoConfigEntry) -> None:
     """Drop devices (and their entities) of stations no longer selected."""
-    selected = set(entry.options.get(CONF_STATIONS, []))
+    selected = {device_key(entry.entry_id, s) for s in entry.options.get(CONF_STATIONS, [])}
     registry = dr.async_get(hass)
     for device in dr.async_entries_for_config_entry(registry, entry.entry_id):
         ids = {i for d, i in device.identifiers if d == DOMAIN}
@@ -154,20 +153,48 @@ def _remove_deselected(hass: HomeAssistant, entry: OpoMeteoConfigEntry) -> None:
             registry.async_update_device(device.id, remove_config_entry_id=entry.entry_id)
 
 
-def _apply_units(hass: HomeAssistant, entry: OpoMeteoConfigEntry) -> None:
-    """Set (or clear) the registry unit override of every convertible sensor."""
-    units = entry.options.get(CONF_UNITS, DEFAULT_UNITS)
-    registry = er.async_get(hass)
-    for ent in er.async_entries_for_config_entry(registry, entry.entry_id):
-        if ent.domain != Platform.SENSOR:
-            continue
-        mapping = UNIT_OVERRIDES.get(ent.original_device_class)
-        if mapping is None:
-            continue
-        unit = mapping.get(units)
-        current = (ent.options.get("sensor") or {}).get("unit_of_measurement")
-        if unit == current:
-            continue
-        registry.async_update_entity_options(
-            ent.entity_id, "sensor", {"unit_of_measurement": unit} if unit else {}
+def _refresh_devices(
+    hass: HomeAssistant, entry: OpoMeteoConfigEntry, stations: dict[str, Any]
+) -> None:
+    """Keep device name / model in step with the station on the server."""
+    registry = dr.async_get(hass)
+    for sid, st in stations.items():
+        device = registry.async_get_device(
+            identifiers={(DOMAIN, device_key(entry.entry_id, sid))}
         )
+        if device is None:
+            continue
+        name, model = st.get("name") or sid, st.get("type")
+        if device.name != name or device.model != model:
+            registry.async_update_device(device.id, name=name, model=model)
+
+
+def _apply_units(hass: HomeAssistant, entry: OpoMeteoConfigEntry) -> None:
+    """Convert existing sensors when the units option changed since last applied.
+
+    Runs only on a change, so per-entity unit overrides the owner set survive
+    restarts; other sensor options (display precision) are kept. Entities
+    created later get the override when they are added (see sensor.py).
+    """
+    units = entry.options.get(CONF_UNITS, DEFAULT_UNITS)
+    applied = entry.data.get(CONF_APPLIED_UNITS)
+    if applied == units:
+        return
+    if applied is not None:
+        registry = er.async_get(hass)
+        for ent in er.async_entries_for_config_entry(registry, entry.entry_id):
+            if ent.domain != Platform.SENSOR:
+                continue
+            if ent.original_device_class not in UNIT_CLASSES:
+                continue
+            registry.async_update_entity_options(
+                ent.entity_id,
+                "sensor",
+                merged_sensor_options(
+                    ent.options.get("sensor"), unit_override(ent.original_device_class, units)
+                ),
+            )
+    # entry is not yet listened to here, so this does not trigger a reload
+    hass.config_entries.async_update_entry(
+        entry, data={**entry.data, CONF_APPLIED_UNITS: units}
+    )

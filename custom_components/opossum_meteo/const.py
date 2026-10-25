@@ -21,4 +21,6 @@ UNITS = ["ha", "metric", "imperial"]
 # options flow does not overwrite it.
 CONF_KNOWN_STATIONS = "known_stations"
 
+CONF_APPLIED_UNITS = "applied_units"
+
 ISSUE_NEW_STATION = "new_station"

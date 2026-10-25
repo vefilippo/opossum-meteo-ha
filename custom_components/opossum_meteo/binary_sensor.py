@@ -30,7 +30,6 @@ BINARY_SENSORS: tuple[OpoMeteoBinaryDescription, ...] = (
     OpoMeteoBinaryDescription(
         key="online",
         device_class=BinarySensorDeviceClass.CONNECTIVITY,
-        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     OpoMeteoBinaryDescription(
         key="storm", capability="storm", icon="mdi:weather-lightning"

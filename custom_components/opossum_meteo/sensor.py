@@ -23,11 +23,13 @@ from homeassistant.const import (
     UnitOfVolumetricFlux,
 )
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import CONF_STATIONS
+from .const import CONF_STATIONS, CONF_UNITS, DEFAULT_UNITS
 from .coordinator import OpoMeteoConfigEntry, OpoMeteoCoordinator
 from .entity import OpoMeteoEntity, station_capable
+from .units import merged_sensor_options, unit_override
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -145,6 +147,25 @@ class OpoMeteoSensor(OpoMeteoEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, station_id, description.key)
         self.entity_description = description
+        # the last reading matters most while the station is offline
+        self._needs_online = description.key != "last_reading"
+
+    async def async_added_to_hass(self) -> None:
+        """Apply the units option to an entity created in this run."""
+        await super().async_added_to_hass()
+        reg_entry = self.registry_entry
+        if reg_entry is None or reg_entry.created_at < self.coordinator.setup_started:
+            return
+        unit = unit_override(
+            self.entity_description.device_class,
+            self.coordinator.config_entry.options.get(CONF_UNITS, DEFAULT_UNITS),
+        )
+        if unit and "unit_of_measurement" not in (reg_entry.options.get("sensor") or {}):
+            er.async_get(self.hass).async_update_entity_options(
+                self.entity_id,
+                "sensor",
+                merged_sensor_options(reg_entry.options.get("sensor"), unit),
+            )
 
     @property
     def native_value(self) -> Any:

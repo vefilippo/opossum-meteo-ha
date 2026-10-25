@@ -5,6 +5,7 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.opossum_meteo.const import DOMAIN
 
+ENTRY_ID = "test_entry"
 URL = "https://meteo.example.com"
 API = f"{URL}/api/v1/ha/stations"
 
@@ -51,6 +52,7 @@ async def setup(hass, aioclient_mock, stations, options=None, data_extra=None):
     aioclient_mock.get(API, json=payload(*stations))
     entry = MockConfigEntry(
         domain=DOMAIN,
+        entry_id=ENTRY_ID,
         unique_id=URL,
         data={"url": URL, "api_key": "k", **(data_extra or {})},
         options={
@@ -68,7 +70,7 @@ async def setup(hass, aioclient_mock, stations, options=None, data_extra=None):
 
 
 def eid(hass, domain, sid, key):
-    return er.async_get(hass).async_get_entity_id(domain, DOMAIN, f"{sid}_{key}")
+    return er.async_get(hass).async_get_entity_id(domain, DOMAIN, f"{ENTRY_ID}_{sid}_{key}")
 
 
 async def refresh(hass, aioclient_mock, entry, *stations):

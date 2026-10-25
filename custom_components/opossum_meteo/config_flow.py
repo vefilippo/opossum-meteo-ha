@@ -189,10 +189,20 @@ class OpoMeteoConfigFlow(ConfigFlow, domain=DOMAIN):
 class OpoMeteoOptionsFlow(OptionsFlow):
     """Stations, auto-add, units and polling interval."""
 
+    _offered: list[str] = []
+
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         if user_input is not None:
+            # every station shown is now a deliberate choice: not "new" any more
+            entry = self.config_entry
+            known = set(entry.data.get(CONF_KNOWN_STATIONS) or [])
+            known |= set(self._offered) | set(user_input[CONF_STATIONS])
+            if known != set(entry.data.get(CONF_KNOWN_STATIONS) or []):
+                self.hass.config_entries.async_update_entry(
+                    entry, data={**entry.data, CONF_KNOWN_STATIONS: sorted(known)}
+                )
             return self.async_create_entry(data=user_input)
 
         entry = self.config_entry
@@ -217,6 +227,7 @@ class OpoMeteoOptionsFlow(OptionsFlow):
 
         selected = list(opts.get(CONF_STATIONS, []))
         options = _station_options(stations, selected)
+        self._offered = [o["value"] for o in options]
         return self.async_show_form(
             step_id="init",
             data_schema=vol.Schema(

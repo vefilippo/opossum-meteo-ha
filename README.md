@@ -1,6 +1,6 @@
 # OpoMeteo for Home Assistant
 
-Home Assistant integration for the [OpoMeteo](https://github.com/vefilippo/opossum-meteo-ha) weather station server. It reads the stations of your OpoMeteo server through its key-protected API and exposes each one as a device with sensors.
+Home Assistant integration for the [OpoMeteo](https://github.com/vefilippo/opossum-meteo) weather station server. It reads the stations of your OpoMeteo server through its key-protected API and exposes each one as a device with sensors.
 
 ## Features
 
@@ -30,7 +30,7 @@ Open the integration and choose **Configure**:
 | --- | --- |
 | Stations | Stations added to Home Assistant. Unticking one removes its device and entities. |
 | Add new stations automatically | New stations on the server are added on the next refresh. When off, a repair issue tells you a new station is available so you can tick it. A station you unticked is never added again by this option. |
-| Units | `Home Assistant default` follows your system units; `Metric` forces degC, hPa, mm, mm/h; `Imperial` forces degF, inHg, in, in/h. You can still override a single entity in its own settings. |
+| Units | `Home Assistant default` follows your system units; `Metric` forces °C, hPa, mm, mm/h; `Imperial` forces °F, inHg, in, in/h. You can still override a single entity in its own settings; that choice is kept across restarts and only replaced when you change this option. |
 | Update interval | Polling interval in seconds (default 60, minimum 30). |
 
 ## Entities

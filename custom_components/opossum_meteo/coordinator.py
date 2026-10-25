@@ -9,6 +9,7 @@ from typing import Any
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.util import dt as dt_util
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .api import OpoMeteoAuthError, OpoMeteoClient, OpoMeteoConnectionError
@@ -37,6 +38,7 @@ class OpoMeteoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             ),
         )
         self.client = client
+        self.setup_started = dt_util.utcnow()
 
     async def _async_update_data(self) -> dict[str, Any]:
         try:
