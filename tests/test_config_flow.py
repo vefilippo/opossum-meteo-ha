@@ -50,7 +50,12 @@ async def test_user_flow_creates_entry_with_selected_stations(hass, aioclient_mo
         result["flow_id"], {"stations": ["Lignano", "s2"]}
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["data"] == {"url": URL, "api_key": "opo_good"}
+    assert result["data"] == {
+        "url": URL,
+        "api_key": "opo_good",
+        # everything offered, so unticked stations are not treated as new later
+        "known_stations": ["Lignano", "s2", "Aviano"],
+    }
     assert result["options"] == {
         "stations": ["Lignano", "s2"],
         "auto_add": True,

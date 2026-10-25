@@ -67,5 +67,53 @@
         "imperial": "Imperiale"
       }
     }
+  },
+  "entity": {
+    "sensor": {
+      "temperature": {
+        "name": "Temperatura"
+      },
+      "humidity": {
+        "name": "Umidità"
+      },
+      "pressure": {
+        "name": "Pressione"
+      },
+      "rain_today": {
+        "name": "Pioggia oggi"
+      },
+      "rain_rate": {
+        "name": "Intensità pioggia"
+      },
+      "battery": {
+        "name": "Batteria"
+      },
+      "last_reading": {
+        "name": "Ultima lettura"
+      },
+      "battery_voltage": {
+        "name": "Tensione batteria"
+      },
+      "rssi": {
+        "name": "Intensità segnale"
+      }
+    },
+    "binary_sensor": {
+      "online": {
+        "name": "Online"
+      },
+      "storm": {
+        "name": "Temporale"
+      },
+      "charging": {
+        "name": "In carica"
+      }
+    }
+  },
+  "issues": {
+    "new_station": {
+      "title": "Nuova stazione OpoMeteo: {name}",
+      "description": "La stazione {name} è disponibile sul server OpoMeteo ma non è aggiunta a Home Assistant. Apri le opzioni dell'integrazione OpoMeteo e selezionala, oppure attiva \"Aggiungi automaticamente le nuove stazioni\"."
+    }
   }
 }

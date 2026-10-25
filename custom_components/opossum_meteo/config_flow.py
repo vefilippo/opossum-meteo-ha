@@ -30,6 +30,7 @@ from .api import (
 from .const import (
     CONF_API_KEY,
     CONF_AUTO_ADD,
+    CONF_KNOWN_STATIONS,
     CONF_SCAN_INTERVAL,
     CONF_STATIONS,
     CONF_UNITS,
@@ -120,7 +121,11 @@ class OpoMeteoConfigFlow(ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             return self.async_create_entry(
                 title=f"OpoMeteo ({self._url})",
-                data={CONF_URL: self._url, CONF_API_KEY: self._api_key},
+                data={
+                    CONF_URL: self._url,
+                    CONF_API_KEY: self._api_key,
+                    CONF_KNOWN_STATIONS: [st["id"] for st in self._stations],
+                },
                 options={
                     CONF_STATIONS: user_input[CONF_STATIONS],
                     CONF_AUTO_ADD: DEFAULT_AUTO_ADD,
