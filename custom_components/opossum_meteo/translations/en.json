@@ -9,7 +9,7 @@
           "api_key": "API key"
         },
         "data_description": {
-          "url": "For example https://meteo.example.com",
+          "url": "The OpoMeteo web address (the address you open in the browser), not the sensor port.",
           "api_key": "Starts with opo_"
         }
       },
@@ -35,7 +35,7 @@
           "api_key": "API key"
         },
         "data_description": {
-          "url": "The OpoMeteo web address, not the sensor port. For example https://meteo.example.com",
+          "url": "The OpoMeteo web address (the address you open in the browser), not the sensor port.",
           "api_key": "Only needed to replace the current key"
         }
       }

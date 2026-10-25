@@ -9,7 +9,7 @@
           "api_key": "Chiave API"
         },
         "data_description": {
-          "url": "Ad esempio https://meteo.example.com",
+          "url": "L'indirizzo web di OpoMeteo (quello che apri nel browser), non la porta dei sensori.",
           "api_key": "Inizia con opo_"
         }
       },
@@ -35,7 +35,7 @@
           "api_key": "Chiave API"
         },
         "data_description": {
-          "url": "L'indirizzo web di OpoMeteo, non la porta dei sensori. Ad esempio https://meteo.example.com",
+          "url": "L'indirizzo web di OpoMeteo (quello che apri nel browser), non la porta dei sensori.",
           "api_key": "Serve solo per sostituire la chiave attuale"
         }
       }
