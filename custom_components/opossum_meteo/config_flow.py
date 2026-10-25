@@ -1,4 +1,4 @@
-"""Config, re-auth and options flows."""
+"""Config, re-auth, reconfigure and options flows."""
 
 from __future__ import annotations
 
@@ -19,6 +19,9 @@ from homeassistant.helpers.selector import (
     SelectSelector,
     SelectSelectorConfig,
     SelectSelectorMode,
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
 )
 
 from .api import (
@@ -57,6 +60,23 @@ def _station_options(
         SelectOptionDict(value=sid, label=label)
         for sid, label in sorted(labels.items(), key=lambda kv: (kv[1].casefold(), kv[0]))
     ]
+
+
+_KEY_SELECTOR = TextSelector(TextSelectorConfig(type=TextSelectorType.PASSWORD))
+
+
+async def _validate(hass, url: str, api_key: str) -> tuple[dict[str, Any] | None, str | None]:
+    """Fetch the stations with these credentials; returns (payload, error key)."""
+    client = OpoMeteoClient(async_get_clientsession(hass), url, api_key)
+    try:
+        return await client.stations(), None
+    except OpoMeteoAuthError:
+        return None, "invalid_auth"
+    except OpoMeteoConnectionError:
+        return None, "cannot_connect"
+    except Exception:  # noqa: BLE001
+        _LOGGER.exception("Unexpected error validating the OpoMeteo server")
+        return None, "unknown"
 
 
 def _stations_selector(options: list[SelectOptionDict]) -> SelectSelector:
@@ -108,7 +128,7 @@ class OpoMeteoConfigFlow(ConfigFlow, domain=DOMAIN):
                     vol.Required(
                         CONF_URL, default=(user_input or {}).get(CONF_URL, "")
                     ): str,
-                    vol.Required(CONF_API_KEY): str,
+                    vol.Required(CONF_API_KEY): _KEY_SELECTOR,
                 }
             ),
             errors=errors,
@@ -175,8 +195,45 @@ class OpoMeteoConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
         return self.async_show_form(
             step_id="reauth_confirm",
-            data_schema=vol.Schema({vol.Required(CONF_API_KEY): str}),
+            data_schema=vol.Schema({vol.Required(CONF_API_KEY): _KEY_SELECTOR}),
             description_placeholders={"url": entry.data[CONF_URL]},
+            errors=errors,
+        )
+
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Change the server address (and optionally the key) in place."""
+        errors: dict[str, str] = {}
+        entry = self._get_reconfigure_entry()
+        if user_input is not None:
+            url = normalize_url(user_input[CONF_URL])
+            api_key = user_input.get(CONF_API_KEY) or entry.data[CONF_API_KEY]
+            _, error = await _validate(self.hass, url, api_key)
+            if error:
+                errors["base"] = error
+            else:
+                # the address is expected to change, so only other entries can clash
+                existing = await self.async_set_unique_id(url)
+                if existing is not None and existing.entry_id != entry.entry_id:
+                    return self.async_abort(reason="already_configured")
+                return self.async_update_reload_and_abort(
+                    entry,
+                    unique_id=url,
+                    title=f"OpoMeteo ({url})",
+                    data_updates={CONF_URL: url, CONF_API_KEY: api_key},
+                )
+        return self.async_show_form(
+            step_id="reconfigure",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_URL,
+                        default=(user_input or {}).get(CONF_URL, entry.data[CONF_URL]),
+                    ): str,
+                    vol.Optional(CONF_API_KEY): _KEY_SELECTOR,
+                }
+            ),
             errors=errors,
         )
 

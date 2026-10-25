@@ -26,6 +26,18 @@
         "data": {
           "api_key": "API key"
         }
+      },
+      "reconfigure": {
+        "title": "Change the OpoMeteo server",
+        "description": "Enter the new web address of your OpoMeteo server. Leave the API key empty to keep the current one.",
+        "data": {
+          "url": "Server URL",
+          "api_key": "API key"
+        },
+        "data_description": {
+          "url": "The OpoMeteo web address, not the sensor port. For example https://meteo.example.com",
+          "api_key": "Only needed to replace the current key"
+        }
       }
     },
     "error": {
@@ -35,7 +47,8 @@
     },
     "abort": {
       "already_configured": "This server is already configured.",
-      "reauth_successful": "Re-authentication was successful."
+      "reauth_successful": "Re-authentication was successful.",
+      "reconfigure_successful": "The server was updated."
     }
   },
   "options": {

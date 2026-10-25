@@ -222,3 +222,102 @@ async def test_user_and_reauth_unknown_error(hass, aioclient_mock):
         reauth["flow_id"], {"api_key": "k"}
     )
     assert result["errors"] == {"base": "unknown"}
+
+
+async def _loaded_entry(hass, aioclient_mock, **kw):
+    entry = _entry(**kw)
+    entry.add_to_hass(hass)
+    aioclient_mock.get(ENDPOINT, json=PAYLOAD)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+    return entry
+
+
+async def test_reconfigure_changes_url_keeps_key_and_selection(hass, aioclient_mock):
+    entry = await _loaded_entry(hass, aioclient_mock, stations=["Aviano"], auto_add=False)
+    new_url = "https://new.example.com"
+    aioclient_mock.get(f"{new_url}/api/v1/ha/stations", json=PAYLOAD)
+
+    result = await entry.start_reconfigure_flow(hass)
+    assert result["type"] is FlowResultType.FORM and result["step_id"] == "reconfigure"
+    # the form offers the current address
+    url_key = next(k for k in result["data_schema"].schema if str(k) == "url")
+    assert url_key.default() == URL
+
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"url": new_url + "/"}
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    await hass.async_block_till_done()
+    assert entry.data["url"] == new_url
+    assert entry.data["api_key"] == "old"  # empty key = keep the current one
+    assert entry.unique_id == new_url
+    assert entry.options["stations"] == ["Aviano"] and entry.options["auto_add"] is False
+    assert entry.state is ConfigEntryState.LOADED
+
+
+async def test_reconfigure_replaces_key_when_given(hass, aioclient_mock):
+    entry = await _loaded_entry(hass, aioclient_mock)
+    result = await entry.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"url": URL, "api_key": "opo_new"}
+    )
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data["api_key"] == "opo_new" and entry.unique_id == URL
+    # the validation call used the new key
+    assert aioclient_mock.mock_calls[-1][3]["Authorization"] == "Bearer opo_new"
+
+
+async def test_reconfigure_errors_then_succeeds(hass, aioclient_mock):
+    entry = await _loaded_entry(hass, aioclient_mock)
+    new_url = "https://new.example.com"
+    endpoint = f"{new_url}/api/v1/ha/stations"
+    result = await entry.start_reconfigure_flow(hass)
+    for kwargs, error in (
+        ({"status": 401, "json": {"error": "invalid api key"}}, "invalid_auth"),
+        ({"status": 500}, "cannot_connect"),
+        ({"exc": RuntimeError("boom")}, "unknown"),
+    ):
+        aioclient_mock.clear_requests()
+        aioclient_mock.get(endpoint, **kwargs)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], {"url": new_url}
+        )
+        assert result["type"] is FlowResultType.FORM
+        assert result["errors"] == {"base": error}
+    assert entry.data["url"] == URL
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(endpoint, json=PAYLOAD)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"url": new_url}
+    )
+    assert result["reason"] == "reconfigure_successful"
+
+
+async def test_reconfigure_aborts_when_url_used_by_another_entry(hass, aioclient_mock):
+    entry = await _loaded_entry(hass, aioclient_mock)
+    other_url = "https://other.example.com"
+    MockConfigEntry(
+        domain=DOMAIN, unique_id=other_url, data={"url": other_url, "api_key": "k"}
+    ).add_to_hass(hass)
+    aioclient_mock.get(f"{other_url}/api/v1/ha/stations", json=PAYLOAD)
+    result = await entry.start_reconfigure_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"url": other_url}
+    )
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
+    assert entry.data["url"] == URL
+
+
+async def test_api_key_fields_are_password_inputs(hass, aioclient_mock):
+    def key_validator(result, field="api_key"):
+        return next(v for k, v in result["data_schema"].schema.items() if str(k) == field)
+
+    user = await _start(hass)
+    entry = await _loaded_entry(hass, aioclient_mock)
+    reauth = await entry.start_reauth_flow(hass)
+    reconf = await entry.start_reconfigure_flow(hass)
+    for result in (user, reauth, reconf):
+        assert key_validator(result).config["type"] == "password"

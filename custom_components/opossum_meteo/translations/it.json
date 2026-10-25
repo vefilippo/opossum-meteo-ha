@@ -26,6 +26,18 @@
         "data": {
           "api_key": "Chiave API"
         }
+      },
+      "reconfigure": {
+        "title": "Cambia il server OpoMeteo",
+        "description": "Inserisci il nuovo indirizzo web del tuo server OpoMeteo. Lascia vuota la chiave API per mantenere quella attuale.",
+        "data": {
+          "url": "URL del server",
+          "api_key": "Chiave API"
+        },
+        "data_description": {
+          "url": "L'indirizzo web di OpoMeteo, non la porta dei sensori. Ad esempio https://meteo.example.com",
+          "api_key": "Serve solo per sostituire la chiave attuale"
+        }
       }
     },
     "error": {
@@ -35,7 +47,8 @@
     },
     "abort": {
       "already_configured": "Questo server è già configurato.",
-      "reauth_successful": "Riautenticazione riuscita."
+      "reauth_successful": "Riautenticazione riuscita.",
+      "reconfigure_successful": "Il server è stato aggiornato."
     }
   },
   "options": {

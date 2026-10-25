@@ -19,8 +19,10 @@ Home Assistant integration for the [OpoMeteo](https://github.com/vefilippo/oposs
 
 1. In the OpoMeteo web admin open **API keys** ("Chiavi API"), create a key and copy it (it is shown only once).
 2. In Home Assistant go to **Settings > Devices & services > Add integration > OpoMeteo**.
-3. Enter the OpoMeteo web address (for example `https://meteo.example.com`) and the key.
+3. Enter the OpoMeteo **web** address (for example `https://meteo.example.com`; on a NAS the web port, such as `http://<nas>:9996`, not the sensor ingest port) and the key.
 4. Tick the stations to add.
+
+If the server moves to a new address, open the integration's menu and choose **Reconfigure**: enter the new address (and a new key if it changed). Stations, options and entities are kept.
 
 ## Options
 
@@ -55,12 +57,12 @@ Binary sensors:
 | --- | --- |
 | Online | Connectivity; carries `latitude` / `longitude` so the station shows on the map. Always available while the server answers. |
 | Storm | Storm detected. |
-| Charging | Diagnostic, battery charging. |
+| Charging | Diagnostic, battery charging, disabled by default. |
 
 ## Troubleshooting
 
 - **Invalid key / "re-authentication needed"**: the key was revoked or mistyped. Create a new one in the OpoMeteo admin and enter it in the re-authentication prompt Home Assistant shows.
-- **Cannot connect**: use the address you open OpoMeteo with in a browser, reachable from the Home Assistant host.
+- **Cannot connect**: use the web address you open OpoMeteo with in a browser (not the sensor ingest port), reachable from the Home Assistant host.
 - **Entities unavailable**: the station is offline (no reading within the server's silence threshold) or no longer on the server. They recover on their own with the next reading.
 - **A station is missing**: it must be ticked in the options; with auto-add off, check Settings > Repairs.
 
