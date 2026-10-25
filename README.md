@@ -1,6 +1,6 @@
 # OpoMeteo for Home Assistant
 
-Home Assistant integration for the [OpoMeteo](https://github.com/vefilippo/opossum-meteo) weather station server. It reads the stations of your OpoMeteo server through its key-protected API and exposes each one as a device with sensors.
+Home Assistant integration for the OpoMeteo weather station server (requires an OpoMeteo server). It reads the stations of your OpoMeteo server through its key-protected API and exposes each one as a device with sensors.
 
 ## Features
 
