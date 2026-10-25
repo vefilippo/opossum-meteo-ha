@@ -16,13 +16,11 @@ from .const import CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL, DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
-SERVER_KEY = "server"
-
 type OpoMeteoConfigEntry = ConfigEntry[OpoMeteoCoordinator]
 
 
 class OpoMeteoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
-    """Polls the server; data is {station_id: station_dict, "server": metadata}."""
+    """Polls the server; data is {"server": metadata, "stations": {station_id: station}}."""
 
     config_entry: OpoMeteoConfigEntry
 
@@ -47,8 +45,10 @@ class OpoMeteoCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             raise ConfigEntryAuthFailed("API key rejected") from err
         except OpoMeteoConnectionError as err:
             raise UpdateFailed(f"Error talking to OpoMeteo: {err}") from err
-        data: dict[str, Any] = {st["id"]: st for st in payload["stations"]}
-        data[SERVER_KEY] = {
-            k: payload.get(k) for k in ("server_version", "silent_after_s", "generated_at")
+        return {
+            "server": {
+                k: payload.get(k)
+                for k in ("server_version", "silent_after_s", "generated_at")
+            },
+            "stations": {st["id"]: st for st in payload["stations"]},
         }
-        return data

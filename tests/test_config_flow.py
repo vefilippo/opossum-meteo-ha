@@ -177,3 +177,43 @@ async def test_options_flow_saves_options(hass, aioclient_mock):
     # the update listener reloaded the entry with the new interval
     assert entry.state is ConfigEntryState.LOADED
     assert entry.runtime_data.update_interval.total_seconds() == 120
+
+
+async def test_options_flow_falls_back_to_coordinator_data(hass, aioclient_mock):
+    entry = _entry()
+    entry.add_to_hass(hass)
+    aioclient_mock.get(ENDPOINT, json=PAYLOAD)
+    await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    aioclient_mock.clear_requests()
+    aioclient_mock.get(ENDPOINT, status=500)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] is FlowResultType.FORM
+    assert {o["value"] for o in _select_options(result)} == {"Lignano", "s2", "Aviano"}
+
+
+async def test_options_flow_aborts_without_any_data(hass, aioclient_mock):
+    entry = _entry()
+    entry.add_to_hass(hass)  # not set up: no coordinator data
+    aioclient_mock.get(ENDPOINT, status=500)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    assert result["type"] is FlowResultType.ABORT
+    assert result["reason"] == "cannot_connect"
+
+
+async def test_user_and_reauth_unknown_error(hass, aioclient_mock):
+    aioclient_mock.get(ENDPOINT, exc=RuntimeError("boom"))
+    result = await _start(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"], {"url": URL, "api_key": "k"}
+    )
+    assert result["errors"] == {"base": "unknown"}
+
+    entry = _entry()
+    entry.add_to_hass(hass)
+    reauth = await entry.start_reauth_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        reauth["flow_id"], {"api_key": "k"}
+    )
+    assert result["errors"] == {"base": "unknown"}

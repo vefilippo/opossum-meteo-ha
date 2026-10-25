@@ -30,7 +30,8 @@
     },
     "error": {
       "invalid_auth": "La chiave API è stata rifiutata.",
-      "cannot_connect": "Impossibile raggiungere il server."
+      "cannot_connect": "Impossibile raggiungere il server.",
+      "unknown": "Errore imprevisto. Controlla il log di Home Assistant."
     },
     "abort": {
       "already_configured": "Questo server è già configurato.",

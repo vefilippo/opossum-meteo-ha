@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+import logging
 from typing import Any
 
 import voluptuous as vol
@@ -40,6 +41,8 @@ from .const import (
     MIN_SCAN_INTERVAL,
     UNITS,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 
 def _station_options(
@@ -86,6 +89,9 @@ class OpoMeteoConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_auth"
             except OpoMeteoConnectionError:
                 errors["base"] = "cannot_connect"
+            except Exception:  # noqa: BLE001
+                _LOGGER.exception("Unexpected error validating the OpoMeteo server")
+                errors["base"] = "unknown"
             else:
                 await self.async_set_unique_id(url)
                 self._abort_if_unique_id_configured()
@@ -155,6 +161,9 @@ class OpoMeteoConfigFlow(ConfigFlow, domain=DOMAIN):
                 errors["base"] = "invalid_auth"
             except OpoMeteoConnectionError:
                 errors["base"] = "cannot_connect"
+            except Exception:  # noqa: BLE001
+                _LOGGER.exception("Unexpected error validating the OpoMeteo server")
+                errors["base"] = "unknown"
             else:
                 return self.async_update_reload_and_abort(
                     entry, data_updates={CONF_API_KEY: user_input[CONF_API_KEY]}
@@ -183,17 +192,23 @@ class OpoMeteoOptionsFlow(OptionsFlow):
 
         entry = self.config_entry
         opts = entry.options
+        client = OpoMeteoClient(
+            async_get_clientsession(self.hass),
+            entry.data[CONF_URL],
+            entry.data[CONF_API_KEY],
+        )
         try:
-            client = OpoMeteoClient(
-                async_get_clientsession(self.hass),
-                entry.data[CONF_URL],
-                entry.data[CONF_API_KEY],
-            )
             stations = (await client.stations())["stations"]
-        except OpoMeteoAuthError:
-            return self.async_abort(reason="invalid_auth")
-        except OpoMeteoConnectionError:
-            return self.async_abort(reason="cannot_connect")
+        except (OpoMeteoAuthError, OpoMeteoConnectionError) as err:
+            # fall back to the last data the coordinator fetched
+            coordinator = getattr(entry, "runtime_data", None)
+            if coordinator is None or coordinator.data is None:
+                return self.async_abort(
+                    reason="invalid_auth"
+                    if isinstance(err, OpoMeteoAuthError)
+                    else "cannot_connect"
+                )
+            stations = list(coordinator.data["stations"].values())
 
         selected = list(opts.get(CONF_STATIONS, []))
         options = _station_options(stations, selected)

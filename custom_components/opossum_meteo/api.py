@@ -33,17 +33,24 @@ class OpoMeteoClient:
         """Fetch the station list; raises OpoMeteoAuthError / OpoMeteoConnectionError."""
         try:
             async with asyncio.timeout(20):
-                resp = await self._session.get(
+                async with self._session.get(
                     f"{self._base_url}/api/v1/ha/stations",
                     headers={"Authorization": f"Bearer {self._key}"},
-                )
-                if resp.status == 401:
-                    raise OpoMeteoAuthError("invalid api key")
-                if resp.status != 200:
-                    raise OpoMeteoConnectionError(f"HTTP {resp.status}")
-                data = await resp.json(content_type=None)
+                ) as resp:
+                    if resp.status == 401:
+                        raise OpoMeteoAuthError("invalid api key")
+                    if resp.status != 200:
+                        raise OpoMeteoConnectionError(f"HTTP {resp.status}")
+                    data = await resp.json(content_type=None)
         except (aiohttp.ClientError, TimeoutError, ValueError) as err:
             raise OpoMeteoConnectionError(str(err) or type(err).__name__) from err
-        if not isinstance(data, dict) or not isinstance(data.get("stations"), list):
+        if (
+            not isinstance(data, dict)
+            or not isinstance(data.get("stations"), list)
+            or not all(
+                isinstance(st, dict) and isinstance(st.get("id"), str)
+                for st in data["stations"]
+            )
+        ):
             raise OpoMeteoConnectionError("unexpected response")
         return data

@@ -4,9 +4,9 @@
   "codeowners": ["@vefilippo"],
   "config_flow": true,
   "documentation": "https://github.com/vefilippo/opossum-meteo-ha",
-  "integration_type": "service",
+  "integration_type": "hub",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/vefilippo/opossum-meteo-ha",
+  "issue_tracker": "https://github.com/vefilippo/opossum-meteo-ha/issues",
   "requirements": [],
   "version": "0.1.0"
 }

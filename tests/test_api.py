@@ -41,3 +41,12 @@ async def test_client_ok_and_errors(hass, aioclient_mock):
     aioclient_mock.get(ENDPOINT, exc=TimeoutError())
     with pytest.raises(OpoMeteoConnectionError):
         await client.stations()
+
+
+async def test_client_rejects_malformed_stations(hass, aioclient_mock):
+    client = OpoMeteoClient(async_get_clientsession(hass), URL, "k")
+    for bad in ([{"name": "x"}], [{"id": 5}], ["Lignano"]):
+        aioclient_mock.clear_requests()
+        aioclient_mock.get(ENDPOINT, json={"stations": bad})
+        with pytest.raises(OpoMeteoConnectionError):
+            await client.stations()
